@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
+  detectLanguage,
   getLanguageName,
   type LanguageCode,
 } from "@/lib/lang-detect";
@@ -36,7 +37,6 @@ export function TranslationWorkbench() {
   >({});
   const abortFnsRef = useRef<Map<string, () => void>>(new Map());
   const prevIsZh = useRef<boolean | null>(null);
-  const skipAutoTargetRef = useRef(false);
 
   const refreshProviders = useCallback(
     () => setProviders(getEnabledProviders()),
@@ -47,20 +47,6 @@ export function TranslationWorkbench() {
     window.addEventListener("storage", refreshProviders);
     return () => window.removeEventListener("storage", refreshProviders);
   }, [refreshProviders]);
-
-  useEffect(() => {
-    if (sourceLang === null) return;
-    const isZh = sourceLang === "zh";
-    if (skipAutoTargetRef.current) {
-      skipAutoTargetRef.current = false;
-      prevIsZh.current = isZh;
-      return;
-    }
-    if (prevIsZh.current === null || prevIsZh.current !== isZh) {
-      setTargetLang(isZh ? "en" : "zh");
-    }
-    prevIsZh.current = isZh;
-  }, [sourceLang]);
 
   const handleSourceLangChange = useCallback(
     (lang: LanguageCode | null) => setSourceLang(lang),
@@ -132,13 +118,31 @@ export function TranslationWorkbench() {
   );
 
   const handleTranslate = useCallback(
-    async (textOverride?: string) => {
-      const effectiveText = textOverride ?? sourceText;
-      if (!effectiveText.trim() || providers.length === 0) return;
+    async () => {
+      if (!sourceText.trim() || providers.length === 0) return;
       if (
         Object.values(translationStates).some((s) => s.status === "streaming")
       )
         return;
+
+      let effectiveSourceLang = sourceManualLang;
+      let effectiveTarget = targetLang;
+
+      if (!effectiveSourceLang) {
+        try {
+          effectiveSourceLang = await detectLanguage(sourceText);
+        } catch {
+          effectiveSourceLang = "en";
+        }
+        setSourceLang(effectiveSourceLang);
+
+        const isZh = effectiveSourceLang === "zh";
+        if (prevIsZh.current === null || prevIsZh.current !== isZh) {
+          effectiveTarget = isZh ? "en" : "zh";
+          setTargetLang(effectiveTarget);
+        }
+        prevIsZh.current = isZh;
+      }
 
       const settings = loadSettingsFromStorage();
       const template =
@@ -146,9 +150,9 @@ export function TranslationWorkbench() {
         "Translate the following {sourceLanguage} text to {targetLanguage}. Only return the translated text, nothing else.\n\n{sourceText}";
 
       const prompt = replaceVariables(template, {
-        sourceText: effectiveText,
-        sourceLanguage: getLanguageName(sourceLang ?? "en"),
-        targetLanguage: getLanguageName(targetLang),
+        sourceText,
+        sourceLanguage: getLanguageName(effectiveSourceLang),
+        targetLanguage: getLanguageName(effectiveTarget),
       });
 
       const initial: Record<string, TranslationState> = {};
@@ -161,7 +165,7 @@ export function TranslationWorkbench() {
         providers.map((provider) => translateProvider(provider, prompt)),
       );
     },
-    [sourceText, sourceLang, targetLang, providers, translationStates],
+    [sourceText, sourceManualLang, targetLang, providers, translationStates],
   );
 
   const handleRetryProvider = useCallback(
@@ -200,7 +204,6 @@ export function TranslationWorkbench() {
 
   const handleSwap = useCallback(() => {
     if (sourceLang === null) return;
-    skipAutoTargetRef.current = true;
     const oldTarget = targetLang;
     setTargetLang(sourceLang);
     setSourceManualLang(oldTarget);

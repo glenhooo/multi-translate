@@ -26,7 +26,7 @@ type SourcePanelProps = {
   text: string;
   onTextChange: (text: string) => void;
   onLanguageChange?: (lang: LanguageCode | null) => void;
-  onTranslate?: (text?: string) => void;
+  onTranslate?: () => void;
   onStop?: () => void;
   isTranslating?: boolean;
   manualLang?: LanguageCode | null;
@@ -58,6 +58,10 @@ export function SourcePanel({
   };
   const [modifierLabel, setModifierLabel] = useState("Ctrl");
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const skipDebounceRef = useRef(false);
+  const pendingTranslateRef = useRef<string | null>(null);
+  const onTranslateRef = useRef(onTranslate);
+  onTranslateRef.current = onTranslate;
 
   useEffect(() => {
     setModifierLabel(getModifierKeyLabel());
@@ -89,6 +93,12 @@ export function SourcePanel({
       return;
     }
 
+    if (skipDebounceRef.current) {
+      skipDebounceRef.current = false;
+      runDetect(text);
+      return;
+    }
+
     timerRef.current = setTimeout(() => {
       runDetect(text);
     }, DETECT_DEBOUNCE_MS);
@@ -116,6 +126,13 @@ export function SourcePanel({
       (detectStatus.state === "detected" ? detectStatus.language : null);
     onLanguageChange?.(effective);
   }, [manualLang, detectStatus, onLanguageChange]);
+
+  useEffect(() => {
+    if (detectStatus.state !== "detected") return;
+    if (pendingTranslateRef.current === null) return;
+    pendingTranslateRef.current = null;
+    onTranslateRef.current?.();
+  }, [detectStatus]);
 
   const detectLabel = (() => {
     if (manualLang) return getLanguageName(manualLang);
@@ -205,8 +222,9 @@ export function SourcePanel({
               text.slice(selectionEnd)
             ).slice(0, MAX_CHARS);
 
+            pendingTranslateRef.current = newText;
+            skipDebounceRef.current = true;
             onTextChange(newText);
-            onTranslate?.(newText);
           }}
           placeholder="在此输入需要翻译的文本..."
           className="min-h-48 resize-none border-none bg-transparent text-base focus-visible:ring-0 md:min-h-64"
