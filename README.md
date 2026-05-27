@@ -4,6 +4,10 @@
 
 Multi Translate lets you configure multiple OpenAI-compatible model providers and compare their streaming translation results in one interface. It is designed for quick text translation, model output comparison, and building a simple browser-based translation workflow.
 
+## Screenshot
+
+![Multi Translate](docs/screenshot.png)
+
 ## Features
 
 - Multi-provider management: add, enable, and disable OpenAI-compatible API providers.

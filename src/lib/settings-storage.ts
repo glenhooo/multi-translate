@@ -188,7 +188,7 @@ export function createDefaultSettings(): MultiTranslateSettings {
     providers: [
       createProvider({
         id: "provider-openai-primary",
-        name: "OpenAI Primary",
+        name: "OpenAI",
       }),
     ],
     general: createDefaultGeneralSettings(),

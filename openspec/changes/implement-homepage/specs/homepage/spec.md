@@ -83,7 +83,7 @@ The system SHALL display a footer with copyright and legal links.
 
 #### Scenario: Footer rendered
 - **WHEN** the homepage loads
-- **THEN** the footer SHALL display copyright text "© 2024 LinguistAI Utility. All rights reserved."
+- **THEN** the footer SHALL display copyright text "© 2026 MultiTranslate. All rights reserved."
 - **AND** SHALL display links: "Help Center", "Privacy Policy", "Terms of Service"
 - **AND** footer SHALL be pinned to the bottom of the page
 

@@ -9,7 +9,7 @@
 
 ## 3. 布局组件
 - [x] 3.1 创建 TopNavBar 组件（Logo: Languages 图标 + "MultiTranslate"、History/Saved 导航链接、配置按钮）
-- [x] 3.2 创建 Footer 组件（版权信息 "© 2024 LinguistAI Utility. All rights reserved." + Help Center/Privacy Policy/Terms 链接）
+- [x] 3.2 创建 Footer 组件（版权信息 "© 2026 MultiTranslate. All rights reserved." + Help Center/Privacy Policy/Terms 链接）
 
 ## 4. 翻译工作台组件
 - [x] 4.1 创建 SourcePanel 组件
