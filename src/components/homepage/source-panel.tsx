@@ -231,6 +231,7 @@ export function SourcePanel({
             skipDebounceRef.current = true;
             onTextChange(newText);
           }}
+          autoFocus
           placeholder="在此输入需要翻译的文本..."
           className="min-h-48 resize-none border-none bg-transparent text-base focus-visible:ring-0 md:min-h-64"
           maxLength={MAX_CHARS}
