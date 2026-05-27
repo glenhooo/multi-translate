@@ -147,7 +147,7 @@ export function SourcePanel({
   })();
 
   return (
-    <div className="flex w-full flex-col border-border md:w-1/2 md:border-r">
+    <div className="flex max-h-[calc(100vh-12rem)] w-full flex-col overflow-hidden border-border md:w-1/2 md:border-r">
       {/* Language Selector Header */}
       <div className="flex items-center justify-between border-b border-border/50 bg-muted/30 p-2">
         <DropdownMenu.Root>
@@ -204,7 +204,7 @@ export function SourcePanel({
       </div>
 
       {/* Text Input */}
-      <div className="relative flex flex-1 flex-col p-4">
+      <div className="relative flex min-h-0 flex-1 flex-col p-4">
         <Textarea
           value={text}
           onChange={(e) => onTextChange(e.target.value.slice(0, MAX_CHARS))}
@@ -233,12 +233,12 @@ export function SourcePanel({
           }}
           autoFocus
           placeholder="在此输入需要翻译的文本..."
-          className="min-h-48 resize-none border-none bg-transparent text-base focus-visible:ring-0 md:min-h-64"
+          className="min-h-48 flex-1 resize-none overflow-y-auto border-none bg-transparent text-base focus-visible:ring-0 md:min-h-64"
           maxLength={MAX_CHARS}
         />
 
         {/* Bottom Controls */}
-        <div className="mt-auto flex items-end justify-between">
+        <div className="mt-auto flex shrink-0 items-end justify-between">
           <span className="text-xs text-muted-foreground">
             {text.length} / {MAX_CHARS}
           </span>
