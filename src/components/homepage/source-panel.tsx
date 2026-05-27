@@ -84,6 +84,8 @@ export function SourcePanel({
   };
 
   useEffect(() => {
+    if (manualLang || detectStatus.state === "detected") return;
+
     if (timerRef.current) {
       clearTimeout(timerRef.current);
     }
@@ -108,7 +110,7 @@ export function SourcePanel({
         clearTimeout(timerRef.current);
       }
     };
-  }, [text]);
+  }, [text, manualLang, detectStatus.state]);
 
   function handleClear() {
     onTextChange("");
@@ -118,6 +120,9 @@ export function SourcePanel({
 
   function handleManualSelect(code: LanguageCode | null) {
     setManualLang(code);
+    if (code === null && text.trim()) {
+      setDetectStatus({ state: "idle" });
+    }
   }
 
   useEffect(() => {
