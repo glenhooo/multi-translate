@@ -7,6 +7,14 @@ export function FooterSection() {
         </span>
         <nav className="flex gap-4">
           <a
+            href="https://github.com/glenhooo/multi-translate"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-muted-foreground transition-colors hover:text-primary hover:underline"
+          >
+            Source Code
+          </a>
+          <a
             href="#"
             className="text-muted-foreground transition-colors hover:text-primary hover:underline"
           >
