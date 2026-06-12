@@ -15,7 +15,6 @@ import {
 import { cn, getModifierKeyLabel } from "@/lib/utils";
 
 const MAX_CHARS = 5000;
-const DETECT_DEBOUNCE_MS = 500;
 
 type DetectStatus =
   | { state: "idle" }
@@ -48,18 +47,12 @@ export function SourcePanel({
   });
   const [internalManualLang, setInternalManualLang] = useState<LanguageCode | null>(null);
 
-  const manualLang = controlledManualLang !== undefined ? controlledManualLang : internalManualLang;
-  const setManualLang = (lang: LanguageCode | null) => {
-    if (onManualLangChange) {
-      onManualLangChange(lang);
-    } else {
-      setInternalManualLang(lang);
-    }
-  };
+  const manualLang = controlledManualLang ?? internalManualLang;
+  const setManualLang = onManualLangChange ?? setInternalManualLang;
+  
   const [modifierLabel, setModifierLabel] = useState("Ctrl");
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const skipDebounceRef = useRef(false);
-  const pendingTranslateRef = useRef<string | null>(null);
+  const hasDetectedRef = useRef(false);
+  const pendingTranslateRef = useRef(false);
   const onTranslateRef = useRef(onTranslate);
   onTranslateRef.current = onTranslate;
 
@@ -67,12 +60,13 @@ export function SourcePanel({
     setModifierLabel(getModifierKeyLabel());
   }, []);
 
-  const runDetect = async (inputText: string) => {
-    if (!inputText.trim()) {
-      setDetectStatus({ state: "idle" });
+  const runDetect = async (inputText: string, shouldTranslate = false) => {
+    if (!inputText.trim() || manualLang || hasDetectedRef.current) {
       return;
     }
 
+    hasDetectedRef.current = true;
+    pendingTranslateRef.current = shouldTranslate;
     setDetectStatus({ state: "detecting" });
 
     try {
@@ -83,47 +77,23 @@ export function SourcePanel({
     }
   };
 
-  useEffect(() => {
-    if (manualLang || detectStatus.state === "detected") return;
-
-    if (timerRef.current) {
-      clearTimeout(timerRef.current);
-    }
-
-    if (!text.trim()) {
-      setDetectStatus({ state: "idle" });
-      return;
-    }
-
-    if (skipDebounceRef.current) {
-      skipDebounceRef.current = false;
-      runDetect(text);
-      return;
-    }
-
-    timerRef.current = setTimeout(() => {
-      runDetect(text);
-    }, DETECT_DEBOUNCE_MS);
-
-    return () => {
-      if (timerRef.current) {
-        clearTimeout(timerRef.current);
-      }
-    };
-  }, [text, manualLang, detectStatus.state]);
-
-  function handleClear() {
-    onTextChange("");
+  const resetDetection = () => {
     setDetectStatus({ state: "idle" });
-    setManualLang(null);
-  }
+    hasDetectedRef.current = false;
+  };
 
-  function handleManualSelect(code: LanguageCode | null) {
+  const handleClear = () => {
+    onTextChange("");
+    setManualLang(null);
+    resetDetection();
+  };
+
+  const handleManualSelect = (code: LanguageCode | null) => {
     setManualLang(code);
-    if (code === null && text.trim()) {
-      setDetectStatus({ state: "idle" });
+    if (code === null) {
+      resetDetection();
     }
-  }
+  };
 
   useEffect(() => {
     const effective =
@@ -133,18 +103,48 @@ export function SourcePanel({
   }, [manualLang, detectStatus, onLanguageChange]);
 
   useEffect(() => {
-    if (detectStatus.state !== "detected") return;
-    if (pendingTranslateRef.current === null) return;
-    pendingTranslateRef.current = null;
-    onTranslateRef.current?.();
+    if (detectStatus.state === "detected" && pendingTranslateRef.current) {
+      pendingTranslateRef.current = false;
+      onTranslateRef.current?.();
+    }
   }, [detectStatus]);
 
-  const detectLabel = (() => {
-    if (manualLang) return getLanguageName(manualLang);
-    if (detectStatus.state === "idle") return "自动检测";
-    if (detectStatus.state === "detecting") return "检测中...";
-    return getLanguageName(detectStatus.language);
-  })();
+  const detectLabel =
+    manualLang ? getLanguageName(manualLang)
+    : detectStatus.state === "idle" ? "自动检测"
+    : detectStatus.state === "detecting" ? "检测中..."
+    : getLanguageName(detectStatus.language);
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+      e.preventDefault();
+      onTranslate?.();
+    }
+  };
+
+  const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const pastedText = e.clipboardData.getData("text");
+    if (!pastedText) return;
+    e.preventDefault();
+
+    const textarea = e.currentTarget;
+    const { selectionStart, selectionEnd } = textarea;
+    const newText = (
+      text.slice(0, selectionStart) +
+      pastedText +
+      text.slice(selectionEnd)
+    ).slice(0, MAX_CHARS);
+
+    onTextChange(newText);
+    runDetect(newText, true);
+  };
+
+  const handleBlur = (e: React.FocusEvent<HTMLTextAreaElement>) => {
+    const currentText = e.currentTarget.value;
+    if (currentText.trim() && !hasDetectedRef.current && !manualLang) {
+      runDetect(currentText, false);
+    }
+  };
 
   return (
     <div className="flex max-h-[calc(100vh-12rem)] w-full flex-col overflow-hidden border-border md:w-1/2 md:border-r">
@@ -208,29 +208,9 @@ export function SourcePanel({
         <Textarea
           value={text}
           onChange={(e) => onTextChange(e.target.value.slice(0, MAX_CHARS))}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-              e.preventDefault();
-              onTranslate?.();
-            }
-          }}
-          onPaste={(e) => {
-            const pastedText = e.clipboardData.getData("text");
-            if (!pastedText) return;
-            e.preventDefault();
-
-            const textarea = e.currentTarget;
-            const { selectionStart, selectionEnd } = textarea;
-            const newText = (
-              text.slice(0, selectionStart) +
-              pastedText +
-              text.slice(selectionEnd)
-            ).slice(0, MAX_CHARS);
-
-            pendingTranslateRef.current = newText;
-            skipDebounceRef.current = true;
-            onTextChange(newText);
-          }}
+          onKeyDown={handleKeyDown}
+          onPaste={handlePaste}
+          onBlur={handleBlur}
           autoFocus
           placeholder="在此输入需要翻译的文本..."
           className="min-h-48 flex-1 resize-none overflow-y-auto border-none bg-transparent text-base focus-visible:ring-0 md:min-h-64"
