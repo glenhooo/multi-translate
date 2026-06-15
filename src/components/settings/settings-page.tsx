@@ -108,6 +108,24 @@ export function SettingsPage() {
     []
   )
 
+
+  const handleReorderProvider = React.useCallback(
+    (providerId: string, direction: "up" | "down") => {
+      setSettings((currentSettings) => {
+        const providers = [...currentSettings.providers];
+        const index = providers.findIndex((p) => p.id === providerId);
+        if (index < 0) return currentSettings;
+        const targetIndex = direction === "up" ? index - 1 : index + 1;
+        if (targetIndex < 0 || targetIndex >= providers.length) return currentSettings;
+        [providers[index], providers[targetIndex]] = [providers[targetIndex], providers[index]];
+        const newSettings = { ...currentSettings, providers };
+        saveSettingsToStorage(newSettings);
+        return newSettings;
+      });
+      toast.success("提供商顺序已更新并保存。");
+    },
+    []
+  );
   const handleDismissTestResult = React.useCallback(() => {
     setTestState(null)
   }, [])
@@ -162,6 +180,7 @@ export function SettingsPage() {
             onSaveSettings={handleSaveSettings}
             onTestProvider={handleTestProvider}
             onDismissTestResult={handleDismissTestResult}
+            onReorderProvider={handleReorderProvider}
           />
 
           <GeneralSettingsSection

@@ -19,6 +19,7 @@ type ProviderManagementProps = {
   onSaveSettings: () => void
   onTestProvider: (provider: TranslationProviderConfig) => void
   onDismissTestResult: () => void
+  onReorderProvider: (id: string, direction: "up" | "down") => void
 }
 
 export function ProviderManagement({
@@ -29,6 +30,7 @@ export function ProviderManagement({
   onSaveSettings,
   onTestProvider,
   onDismissTestResult,
+  onReorderProvider,
 }: ProviderManagementProps) {
   return (
     <section id="providers" className="flex flex-col gap-4">
@@ -52,7 +54,7 @@ export function ProviderManagement({
         </Button>
       </div>
 
-      {providers.map((provider) => (
+      {providers.map((provider, index) => (
         <ProviderConfigCard
           key={provider.id}
           provider={provider}
@@ -68,6 +70,9 @@ export function ProviderManagement({
           onSave={onSaveSettings}
           onTest={() => onTestProvider(provider)}
           onDismissTestResult={onDismissTestResult}
+          canMoveUp={index > 0}
+          canMoveDown={index < providers.length - 1}
+          onReorder={(direction) => onReorderProvider(provider.id, direction)}
         />
       ))}
 

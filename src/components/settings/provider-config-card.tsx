@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Bot, Cable, Check, Eye, EyeOff, Loader2, Save, X } from "lucide-react";
+import { Bot, Cable, Check, ChevronDown, ChevronUp, Eye, EyeOff, Loader2, Save, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
@@ -16,6 +16,9 @@ type ProviderConfigCardProps = {
   onSave: () => void;
   onTest: () => void;
   onDismissTestResult: () => void;
+  canMoveUp: boolean;
+  canMoveDown: boolean;
+  onReorder: (direction: "up" | "down") => void;
 };
 
 const inputClassName =
@@ -36,6 +39,9 @@ export function ProviderConfigCard({
   onSave,
   onTest,
   onDismissTestResult,
+  canMoveUp,
+  canMoveDown,
+  onReorder,
 }: ProviderConfigCardProps) {
   const [showApiKey, setShowApiKey] = React.useState(false);
   const [dialogOpen, setDialogOpen] = React.useState(false);
@@ -92,7 +98,7 @@ export function ProviderConfigCard({
               >
                 名称
               </label>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-3">
                 <span className="text-xs font-medium text-muted-foreground">
                   已启用
                 </span>
@@ -202,31 +208,53 @@ export function ProviderConfigCard({
           </p>
         </div>
 
-        <div className="flex flex-col gap-3 border-t border-border pt-4 sm:flex-row sm:justify-end">
-          <Button
-            type="button"
-            variant="outline"
-            size="lg"
-            className="gap-2 sm:min-w-24"
-            onClick={onTest}
-            disabled={isTesting}
-          >
-            {isTesting ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <Cable className="size-4" />
-            )}
-            {isTesting ? "测试中..." : "测试"}
-          </Button>
-          <Button
-            type="button"
-            size="lg"
-            className="gap-2 hover:bg-primary/90 sm:min-w-24"
-            onClick={onSave}
-          >
-            <Save className="size-4" />
-            保存
-          </Button>
+        <div className="flex flex-col gap-3 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+              disabled={!canMoveUp}
+              onClick={() => onReorder("up")}
+              aria-label="上移提供商"
+            >
+              <ChevronUp className="size-4" />
+            </button>
+            <button
+              type="button"
+              className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+              disabled={!canMoveDown}
+              onClick={() => onReorder("down")}
+              aria-label="下移提供商"
+            >
+              <ChevronDown className="size-4" />
+            </button>
+          </div>
+          <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+            <Button
+              type="button"
+              variant="outline"
+              size="lg"
+              className="gap-2 sm:min-w-24"
+              onClick={onTest}
+              disabled={isTesting}
+            >
+              {isTesting ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <Cable className="size-4" />
+              )}
+              {isTesting ? "测试中..." : "测试"}
+            </Button>
+            <Button
+              type="button"
+              size="lg"
+              className="gap-2 hover:bg-primary/90 sm:min-w-24"
+              onClick={onSave}
+            >
+              <Save className="size-4" />
+              保存
+            </Button>
+          </div>
         </div>
       </div>
 
