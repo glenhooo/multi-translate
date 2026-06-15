@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { Check, Copy, Loader2, RefreshCw, Volume2 } from "lucide-react"
 
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import type { TranslationState } from "./translation-workbench"
 
 interface ProviderCardProps {
@@ -12,12 +13,20 @@ interface ProviderCardProps {
 
 export function ProviderCard({ name, modelId, state, onRetry }: ProviderCardProps) {
   const [copied, setCopied] = useState(false)
+  const [copiedLower, setCopiedLower] = useState(false)
 
   const handleCopy = async () => {
     if (!state.text) return
     await navigator.clipboard.writeText(state.text)
     setCopied(true)
     setTimeout(() => setCopied(false), 1500)
+  }
+
+  const handleCopyLowercase = async () => {
+    if (!state.text) return
+    await navigator.clipboard.writeText(state.text.toLowerCase())
+    setCopiedLower(true)
+    setTimeout(() => setCopiedLower(false), 1500)
   }
   return (
     <div className="flex flex-col gap-2 rounded-lg border border-border bg-card p-4 shadow-xs">
@@ -51,32 +60,60 @@ export function ProviderCard({ name, modelId, state, onRetry }: ProviderCardProp
       </div>
 
       <div className="mt-2 flex justify-end gap-1 border-t border-border/30 pt-2">
-        <button
-          className="rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-primary disabled:opacity-50"
-          title="重试"
-          disabled={state.status === "streaming"}
-          onClick={onRetry}
-        >
-          <RefreshCw className={`size-[18px] ${state.status === "streaming" ? "animate-spin" : ""}`} />
-        </button>
-        <button
-          className="rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-primary disabled:opacity-50"
-          title="复制"
-          disabled={!state.text}
-          onClick={handleCopy}
-        >
-          {copied ? (
-            <Check className="size-[18px] text-green-500" />
-          ) : (
-            <Copy className="size-[18px]" />
-          )}
-        </button>
-        <button
-          className="rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-primary"
-          title="朗读"
-        >
-          <Volume2 className="size-[18px]" />
-        </button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              className="rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-primary disabled:opacity-50"
+              disabled={state.status === "streaming"}
+              onClick={onRetry}
+            >
+              <RefreshCw className={`size-[18px] ${state.status === "streaming" ? "animate-spin" : ""}`} />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>重试</TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              className="rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-primary disabled:opacity-50"
+              disabled={!state.text}
+              onClick={handleCopy}
+            >
+              {copied ? (
+                <Check className="size-[18px] text-green-500" />
+              ) : (
+                <Copy className="size-[18px]" />
+              )}
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>复制</TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              className="rounded-full p-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-primary disabled:opacity-50"
+              disabled={!state.text}
+              onClick={handleCopyLowercase}
+            >
+              {copiedLower ? (
+                <Check className="size-[18px] text-green-500" />
+              ) : (
+                <span className="font-mono text-[11px]">ab</span>
+              )}
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>复制为全小写</TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              className="rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-primary"
+            >
+              <Volume2 className="size-[18px]" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>朗读</TooltipContent>
+        </Tooltip>
       </div>
     </div>
   )
