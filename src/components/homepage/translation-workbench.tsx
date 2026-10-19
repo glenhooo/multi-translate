@@ -16,6 +16,8 @@ import { SourcePanel } from "./source-panel";
 import { SwapButton } from "./swap-button";
 import { TargetPanel } from "./target-panel";
 
+const MAX_SOURCE_TEXT_LENGTH = 200;
+
 export type TranslationState = {
   status: "idle" | "streaming" | "done" | "error";
   text: string;
@@ -26,8 +28,18 @@ function getEnabledProviders(): TranslationProviderConfig[] {
   return loadSettingsFromStorage().providers.filter((p) => p.enabled);
 }
 
+function getInitialSourceText(): string {
+  if (typeof window === "undefined") return "";
+
+  return (
+    new URLSearchParams(window.location.search)
+      .get("q")
+      ?.slice(0, MAX_SOURCE_TEXT_LENGTH) ?? ""
+  );
+}
+
 export function TranslationWorkbench() {
-  const [sourceText, setSourceText] = useState("");
+  const [sourceText, setSourceText] = useState(getInitialSourceText);
   const [sourceLang, setSourceLang] = useState<LanguageCode | null>(null);
   const [sourceManualLang, setSourceManualLang] = useState<LanguageCode | null>(null);
   const [targetLang, setTargetLang] = useState<LanguageCode>("zh");
@@ -37,6 +49,7 @@ export function TranslationWorkbench() {
   >({});
   const abortFnsRef = useRef<Map<string, () => void>>(new Map());
   const prevIsZh = useRef<boolean | null>(null);
+  const shouldAutoTranslateRef = useRef(Boolean(sourceText.trim()));
 
   const refreshProviders = useCallback(
     () => setProviders(getEnabledProviders()),
@@ -117,56 +130,65 @@ export function TranslationWorkbench() {
     [],
   );
 
-  const handleTranslate = useCallback(
-    async () => {
-      if (!sourceText.trim() || providers.length === 0) return;
-      if (
-        Object.values(translationStates).some((s) => s.status === "streaming")
-      )
-        return;
+  const handleTranslate = useCallback(async () => {
+    if (!sourceText.trim() || providers.length === 0) return;
+    if (Object.values(translationStates).some((s) => s.status === "streaming"))
+      return;
 
-      let effectiveSourceLang = sourceManualLang;
-      let effectiveTarget = targetLang;
+    let effectiveSourceLang = sourceManualLang;
+    let effectiveTarget = targetLang;
 
-      if (!effectiveSourceLang) {
-        try {
-          effectiveSourceLang = await detectLanguage(sourceText);
-        } catch {
-          effectiveSourceLang = "en";
-        }
-        setSourceLang(effectiveSourceLang);
-
-        const isZh = effectiveSourceLang === "zh";
-        if (prevIsZh.current === null || prevIsZh.current !== isZh) {
-          effectiveTarget = isZh ? "en" : "zh";
-          setTargetLang(effectiveTarget);
-        }
-        prevIsZh.current = isZh;
+    if (!effectiveSourceLang) {
+      try {
+        effectiveSourceLang = await detectLanguage(sourceText);
+      } catch {
+        effectiveSourceLang = "en";
       }
+      setSourceLang(effectiveSourceLang);
 
-      const settings = loadSettingsFromStorage();
-      const template =
-        settings.general?.promptTemplate ??
-        "Translate the following {sourceLanguage} text to {targetLanguage}. Only return the translated text, nothing else.\n\n{sourceText}";
-
-      const prompt = replaceVariables(template, {
-        sourceText,
-        sourceLanguage: getLanguageName(effectiveSourceLang),
-        targetLanguage: getLanguageName(effectiveTarget),
-      });
-
-      const initial: Record<string, TranslationState> = {};
-      for (const p of providers) {
-        initial[p.id] = { status: "idle", text: "" };
+      const isZh = effectiveSourceLang === "zh";
+      if (prevIsZh.current === null || prevIsZh.current !== isZh) {
+        effectiveTarget = isZh ? "en" : "zh";
+        setTargetLang(effectiveTarget);
       }
-      setTranslationStates(initial);
+      prevIsZh.current = isZh;
+    }
 
-      await Promise.allSettled(
-        providers.map((provider) => translateProvider(provider, prompt)),
-      );
-    },
-    [sourceText, sourceManualLang, targetLang, providers, translationStates],
-  );
+    const settings = loadSettingsFromStorage();
+    const template =
+      settings.general?.promptTemplate ??
+      "Translate the following {sourceLanguage} text to {targetLanguage}. Only return the translated text, nothing else.\n\n{sourceText}";
+
+    const prompt = replaceVariables(template, {
+      sourceText,
+      sourceLanguage: getLanguageName(effectiveSourceLang),
+      targetLanguage: getLanguageName(effectiveTarget),
+    });
+
+    const initial: Record<string, TranslationState> = {};
+    for (const p of providers) {
+      initial[p.id] = { status: "idle", text: "" };
+    }
+    setTranslationStates(initial);
+
+    await Promise.allSettled(
+      providers.map((provider) => translateProvider(provider, prompt))
+    );
+  }, [
+    sourceText,
+    sourceManualLang,
+    targetLang,
+    providers,
+    translationStates,
+    translateProvider,
+  ]);
+
+  useEffect(() => {
+    if (!shouldAutoTranslateRef.current || providers.length === 0) return;
+
+    shouldAutoTranslateRef.current = false;
+    void handleTranslate();
+  }, [handleTranslate, providers.length]);
 
   const handleRetryProvider = useCallback(
     async (providerId: string) => {
